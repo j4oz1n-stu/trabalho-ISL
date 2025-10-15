@@ -1,59 +1,54 @@
 module tb_circuito;
+    // Entradas do Circuito (Registradores para Fornecer Estímulos)
     reg p3, p2, p1, p0, e1, e0;
+    
+    // Saídas do Circuito (Wires para Capturar Respostas)
     wire c1, c2, c3, E;
 
-    // CORREÇÃO DO ERRO: Declara e atribui variáveis intermediárias
-    // para que o $monitor possa imprimi-las.
-    wire [3:0] peso;
-    wire [1:0] eixo;
-    assign peso = {p3, p2, p1, p0};
-    assign eixo = {e1, e0};
+    // Variáveis auxiliares para loop e contagem
+    integer i_peso; // Contador de 0 a 15 para o Peso
+    integer i_eixo; // Contador de 0 a 3 para o Eixo
+
+    // CORREÇÃO DO ERRO E VISUALIZAÇÃO: Sinais concatenados e decimais
+    // Usados para exibir o valor no $monitor e para simplificar a visualização
+    wire [3:0] peso_bin;
+    wire [1:0] eixo_bin;
+    assign peso_bin = {p3, p2, p1, p0};
+    assign eixo_bin = {e1, e0};
     
-    // Instancia o Circuito Principal (DUT)
+    // Instancia o Circuito Principal (Design Under Test - DUT)
     circuito DUT (.p3(p3), .p2(p2), .p1(p1), .p0(p0), .e1(e1), .e0(e0),
                   .c1(c1), .c2(c2), .c3(c3), .E(E));
 
     initial begin
-        // Agora usamos as variáveis 'peso' e 'eixo' no monitor
-        $monitor("t=%0d | P=%b%b%b%b (%0d) Eixo=%b%b (%0d) | C1=%b C2=%b C3=%b E=%b",
-                  $time, p3, p2, p1, p0, peso, e1, e0, eixo, c1, c2, c3, E);
-
-        // Define o formato VCD para visualização gráfica no GTKWave (opcional, mas bom)
-        $dumpfile("ondas.vcd");
-        $dumpvars(0, tb_circuito); 
-
-        // ----------------------------------------------------
-        // CASOS DE TESTE COBRINDO TODAS AS REGRAS E ERROS
-        // ----------------------------------------------------
-
-        // Inicializa entradas
-        p3=0; p2=0; p1=0; p0=0; e1=0; e0=0; // T0: P=0 (<=7) Eixo=00 -> C1
-        #10; 
-
-        // --- Testes C1 (Peso <= 7 E Eixo = 00) ---
-        p3=0; p2=1; p1=0; p0=0; e1=0; e0=0; // P=4 (<=7) Eixo=00 -> C1
-        #10;
+        // ---------------------------------------------
+        // COMANDOS PARA VISUALIZAÇÃO NO GTKWAVE
+        // ---------------------------------------------
+        $dumpfile("ondas.vcd"); // Cria o arquivo de formas de onda
+        $dumpvars(0, tb_circuito); // Monitora todos os sinais no módulo tb_circuito
         
-        // --- Testes C2 (Peso <= 12 E Eixo = 01) ---
-        p3=1; p2=0; p1=0; p0=0; e1=0; e0=1; // P=8 (<=12) Eixo=01 -> C2
-        #10;
-        p3=1; p2=1; p1=0; p0=0; e1=0; e0=1; // P=12 (<=12) Eixo=01 -> C2
-        #10;
+        // Monitora as alterações no terminal
+        $monitor("t=%0d | P=%b%b%b%b (Dec: %0d) Eixo=%b%b (Dec: %0d) | C1=%b C2=%b C3=%b E=%b",
+                  $time, p3, p2, p1, p0, peso_bin, e1, e0, eixo_bin, c1, c2, c3, E);
 
-        // --- Testes C3 (Peso > 12 E Eixo >= 10) ---
-        p3=1; p2=1; p1=0; p0=1; e1=1; e0=0; // P=13 (>12) Eixo=10 -> C3
-        #10;
-        p3=1; p2=1; p1=1; p0=1; e1=1; e0=1; // P=15 (>12) Eixo=11 -> C3
-        #10;
+        // ---------------------------------------------
+        // VARREDURA COMPLETA DE TODAS AS 64 COMBINAÇÕES
+        // ---------------------------------------------
 
-        // --- Testes Erro (Situações de falha de regra) ---
-        p3=1; p2=0; p1=0; p0=0; e1=0; e0=0; // P=8 (>7) Eixo=00 -> Erro (Peso falha C1)
-        #10;
-        p3=0; p2=1; p1=1; p0=1; e1=0; e0=1; // P=7 (<=7) Eixo=01 -> Erro (Eixo falha C1, Peso falha C2)
-        #10;
-        p3=0; p2=0; p1=0; p0=1; e1=1; e0=1; // P=1 Eixo=11 -> Erro (Nenhuma regra atende)
-        #10;
+        // Loop externo: Varia o peso de 0 a 15
+        for (i_peso = 0; i_peso < 16; i_peso = i_peso + 1) begin
+            // Loop interno: Varia o eixo de 0 a 3
+            for (i_eixo = 0; i_eixo < 4; i_eixo = i_eixo + 1) begin
+                
+                // Atribui os valores do loop aos pinos de entrada
+                {p3, p2, p1, p0} = i_peso;
+                {e1, e0} = i_eixo;
+                
+                // Aguarda 10 unidades de tempo para o circuito estabilizar
+                #10;
+            end
+        end
         
-        $finish;
+        $finish; // Termina a simulação
     end
 endmodule
